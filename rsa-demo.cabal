@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3426aab38b25769b3287b8d6b2f681959a7f24ef0bfb655ecd9c4a1844431967
+-- hash: 3a4c5bdf85eb3efd93714abda5aba607cf8f0255bf629e05741289961cfcb491
 
 name:           rsa-demo
 version:        0.1.0.0
@@ -35,7 +35,9 @@ library
   build-depends:
       base >=4.7 && <5
     , monad-loops
+    , mtl
     , random
+    , transformers
   default-language: Haskell2010
 
 executable rsa-demo-exe
@@ -48,8 +50,10 @@ executable rsa-demo-exe
   build-depends:
       base >=4.7 && <5
     , monad-loops
+    , mtl
     , random
     , rsa-demo
+    , transformers
   default-language: Haskell2010
 
 test-suite rsa-demo-test
@@ -63,6 +67,8 @@ test-suite rsa-demo-test
   build-depends:
       base >=4.7 && <5
     , monad-loops
+    , mtl
     , random
     , rsa-demo
+    , transformers
   default-language: Haskell2010

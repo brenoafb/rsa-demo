@@ -1,13 +1,12 @@
 module Lib where
 
 import Data.Char
-import System.Random (randomIO)
+import System.Random
 import Control.Monad
 import Control.Monad.Loops
+import Control.Monad.Trans
+import Control.Monad.Trans.Maybe
 import Data.Maybe (fromJust)
-
-sieve :: Integral a => [a] -> [a]
-sieve (x:xs) = x : filter (\y -> y `mod` x /= 0) (sieve xs)
 
 -- https://mitpress.mit.edu/sites/default/files/sicp/full-text/book/book-Z-H-11.html#%_sec_1.2.6
 expmod b 0 m = 1
@@ -28,8 +27,14 @@ expmod' b e m
   where
     nonTrivialSqrtOf1 s m = s /= 1 && s /= m - 1 && s ^ 2 `mod` m == 1
 
+randomIO' :: (MonadIO m, Random a) => m a
+randomIO' = liftIO randomIO
+
 -- random integer in [lo,hi)
-randomInteger lo hi = (+ lo) . (`mod` (hi - lo)) <$> randomIO
+randomInteger :: (MonadIO m, Integral a, Random a) => a -> a -> m a
+randomInteger lo hi = (+ lo) . (`mod` (hi - lo)) <$> randomIO'
+
+testTimes = 5
 
 millerRabinTest n = do
   -- a <- (+1) . (`mod` (n - 1)) <$> randomIO -- random number between 1 and n-1
@@ -46,21 +51,8 @@ fastPrimeTest t n = do
 bitLength n = floor $ logBase 2 n' + 1
   where n' = fromIntegral n
 
-primes = sieve [2..]
 
--- probablePrimes = filterM (fastPrimeTest 10) [2..]
-
-primesUpTo n = takeWhile (<= n) primes
-
-primesWithBitLength b =
-  takeWhile (\p -> bitLength p == b) $ dropWhile (\p -> bitLength p < b) primes
-
--- moduli b = filter (\(p,q,n) -> bitLength n == b) candidates
---   where candidates = [(p,q,p*q) | p <- primes', q <- primes']
---         primes' = takeWhile (\p -> bitLength p <= b) $ dropWhile (\p -> bitLength p < b `div` 2) primes
-
-testTimes = 5
-
+-- return a random prime between 2 and n - 1
 randomPrime n = do
   let n' = n + n `mod` 2 -- make n even
   x0 <- randomInteger 1 n
@@ -68,51 +60,51 @@ randomPrime n = do
       ks = iterate (\x -> (x + 2) `mod` n') p0
   fromJust <$> firstM (fastPrimeTest testTimes) ks -- if it terminates, guaranteed to be Just p
 
--- randomPrime n = do
---   let n' = n + n `mod` 2 -- make n even
---   p0 <- randomInteger 0 n
---   let ks = iterate (\x -> (x + 2) `mod` n') p0
---   ts <- mapM (fastPrimeTest testTimes) ks
---   let ps = zip ks ts
---   return $ (fst . head) $ dropWhile (not . snd) ps
+-- generate e coprime with phi s.t. 1 < e < n
+-- n > 2
+randomExp :: (MonadPlus m, MonadIO m, Integral a, Random a) => a -> a -> m a
+randomExp n phi = do
+  e0 <- randomInteger 2 n
+  let ks = iterate next e0
+  first test ks
+  -- firstM (return <$> test) ks
+  where
+    next e = let e' = (e + 1) `mod` n
+              in if e' <= 2 then 3 else e'
+    test e = gcd phi e == 1
 
--- randomPrime n = do
---   p <- randomInteger 0 n
---   let n' = n + n `mod` 2    -- make n even
---   go (p + 1 - p `mod` 2) n  -- start with odd p
---     where
---       go p n = do
---         t <- fastPrimeTest testTimes p
---         if t then return p else go ((p + 2) `mod` n) n -- go to next odd number mod n
+first test [] = mzero
+first test (x:xs)
+  | test x    = return x
+  | otherwise = first test xs
 
-moduli b = do
-  let minB = b `div` 2
-  -- primes <- filterM (fastPrimeTest 10) $ takeWhile (\p -> bitLength p <= minB) [2..]
-  primes <- filterM (fastPrimeTest testTimes) [2 ^ minB .. 2 ^ b - 1]
-  -- indices <-
-  let candidates = [(p,q,p*q) | p <- primes, q <- primes]
-  return $ filter (\(p,q,n) -> bitLength n == b) candidates
+-- compute the inverse of a mod n
+-- https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm#Computing_multiplicative_inverses_in_modular_structures
+inverse :: (MonadPlus m, Integral a) => a -> a -> m a
+inverse a n = go 0 n 1 a
+  where
+    go t r newt 0
+      | r > 1     = mzero  -- a is not invertible mod n
+      | t < 0     = return $ t + n
+      | otherwise = return t
+    go t r newt newr = go t' r' newt' newr'
+      where t' = newt
+            r' = newr
+            newt' = t - quot * newt
+            newr' = r - quot * newr
+            quot = r `div` newr
 
-encryptionKeys p q =
+generate :: (Integral a, Integral b, Random b, Show b) => a -> MaybeT IO (b, b, b, b, b)
+generate b = do
+  p <- randomPrime (2 ^ (b `div` 2))
+  liftIO $ putStrLn $ "p = " ++ show p
+  q <- randomPrime (2 ^ (b `div` 2))
+  liftIO $ putStrLn $ "q = " ++ show q
   let n = p * q
       phi = (p - 1) * (q - 1)
-  in filter (\x -> gcd n x == 1 && gcd phi x == 1) [2 .. (phi-1)]
-
-decryptionKeys p q e =
-  let n = p * q
-      phi = (p - 1) * (q - 1)
-  in filter (\dc -> (dc * e) `mod` phi == 1) [1..]
-
-rsa p q =
-  let n = p * q
-      phi = (p - 1) * (q - 1)
-      es = encryptionKeys p q
-      ds = map (\e -> (e, decryptionKeys e p q)) es
-   in (n, ds)
-
-sample p q k =
-  let (n, ds) = rsa p q
-   in (n, map (\(e, d) -> (e, take k d)) ds)
+  e <- liftIO $ randomExp n phi
+  d <- inverse e phi
+  return (p, q, n, e, d)
 
 encrypt e n p = expmod p e n
 
