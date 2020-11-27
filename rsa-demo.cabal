@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3a4c5bdf85eb3efd93714abda5aba607cf8f0255bf629e05741289961cfcb491
+-- hash: 9e47849fb5dc3bce8c5a3ed6ebb2d530ede4a1b014cf0a226354e5f2f58fb5ba
 
 name:           rsa-demo
 version:        0.1.0.0
@@ -27,7 +27,7 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      RSA
   other-modules:
       Paths_rsa_demo
   hs-source-dirs:

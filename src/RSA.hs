@@ -1,4 +1,4 @@
-module Lib where
+module RSA where
 
 import Data.Char
 import System.Random
@@ -9,11 +9,13 @@ import Control.Monad.Trans.Maybe
 import Data.Maybe (fromJust)
 
 -- https://mitpress.mit.edu/sites/default/files/sicp/full-text/book/book-Z-H-11.html#%_sec_1.2.6
+expmod :: (Integral a1, Integral a2) => a2 -> a1 -> a2 -> a2
 expmod b 0 m = 1
 expmod b e m
   | even e = (expmod b (e `div` 2) m) ^ 2 `mod` m
   | otherwise = (b * expmod b (e - 1) m) `mod` m
 
+expmod' :: (Integral a1, Integral a2) => a2 -> a1 -> a2 -> Maybe a2
 expmod' b 0 m = Just 1
 expmod' b e m
   | even e = do
@@ -36,6 +38,7 @@ randomInteger lo hi = (+ lo) . (`mod` (hi - lo)) <$> randomIO'
 
 testTimes = 5
 
+millerRabinTest :: (MonadIO m, Integral a, Random a) => a -> m Bool
 millerRabinTest n = do
   -- a <- (+1) . (`mod` (n - 1)) <$> randomIO -- random number between 1 and n-1
   a <- randomInteger 1 n -- random number between 1 and n-1 (inclusive)
@@ -43,16 +46,18 @@ millerRabinTest n = do
     Nothing -> return False -- nontrivial sqrt of 1 mod n
     Just k -> return $ k == 1
 
+fastPrimeTest :: (MonadIO m, Integral a, Random a) => Int -> a -> m Bool
 fastPrimeTest _ 1 = return False
 fastPrimeTest t n = do
   tests <- replicateM t (millerRabinTest n)
   return $ and tests
+bitLength :: (Integral b, Integral a) => a -> b
 
 bitLength n = floor $ logBase 2 n' + 1
   where n' = fromIntegral n
 
-
 -- return a random prime between 2 and n - 1
+randomPrime :: (MonadIO m, Random b, Integral b) => b -> m b
 randomPrime n = do
   let n' = n + n `mod` 2 -- make n even
   x0 <- randomInteger 1 n
@@ -73,6 +78,7 @@ randomExp n phi = do
               in if e' <= 2 then 3 else e'
     test e = gcd phi e == 1
 
+first :: MonadPlus m => (a -> Bool) -> [a] -> m a
 first test [] = mzero
 first test (x:xs)
   | test x    = return x
@@ -94,25 +100,24 @@ inverse a n = go 0 n 1 a
             newr' = r - quot * newr
             quot = r `div` newr
 
-generate :: (Integral a, Integral b, Random b, Show b) => a -> MaybeT IO (b, b, b, b, b)
+generate :: (Integral a, Integral b, Random b) => a -> MaybeT IO (b, b, b)
 generate b = do
-  p <- randomPrime (2 ^ (b `div` 2))
-  liftIO $ putStrLn $ "p = " ++ show p
-  q <- randomPrime (2 ^ (b `div` 2))
-  liftIO $ putStrLn $ "q = " ++ show q
+  let maxPrime = 2 ^ (b-1)
+  p <- randomPrime maxPrime
+  q <- randomPrime maxPrime
   let n = p * q
       phi = (p - 1) * (q - 1)
   e <- liftIO $ randomExp n phi
   d <- inverse e phi
-  return (p, q, n, e, d)
+  return (n, e, d)
 
-encrypt e n p = expmod p e n
+encrypt n e p = expmod p e n
 
-decrypt d n c = expmod c d n
+decrypt n d c = expmod c d n
 
-encryptString e n = map (encrypt e n . char2num)
+encryptString n e = map (encrypt n e . char2num)
 
-decryptString d n = map (num2char . decrypt d n)
+decryptString n d = map (num2char . decrypt n d)
 
 -- the following are only valid for characters in ['A'..'Z']
 -- 'A' is mapped to 1, 'B' to 2, and so on
