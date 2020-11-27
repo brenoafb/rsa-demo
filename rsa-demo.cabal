@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9e47849fb5dc3bce8c5a3ed6ebb2d530ede4a1b014cf0a226354e5f2f58fb5ba
+-- hash: ad9e8c8e3e459978b80f80c040421246908a34a5c080a34fbadf962ac86b6a56
 
 name:           rsa-demo
 version:        0.1.0.0
@@ -33,7 +33,12 @@ library
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      DRBG
+    , RSA
+    , base >=4.7 && <5
+    , base64-bytestring
+    , binary
+    , bytestring
     , monad-loops
     , mtl
     , random
@@ -48,7 +53,12 @@ executable rsa-demo-exe
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      DRBG
+    , RSA
+    , base >=4.7 && <5
+    , base64-bytestring
+    , binary
+    , bytestring
     , monad-loops
     , mtl
     , random
@@ -65,7 +75,12 @@ test-suite rsa-demo-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      DRBG
+    , RSA
+    , base >=4.7 && <5
+    , base64-bytestring
+    , binary
+    , bytestring
     , monad-loops
     , mtl
     , random

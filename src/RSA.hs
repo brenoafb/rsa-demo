@@ -8,6 +8,12 @@ import Control.Monad.Trans
 import Control.Monad.Trans.Maybe
 import Data.Maybe (fromJust)
 
+data RSAKeys = RSAKeys
+  { modulus :: Integer
+  , publicKey :: Integer
+  , privateKey :: Integer
+  }
+
 -- https://mitpress.mit.edu/sites/default/files/sicp/full-text/book/book-Z-H-11.html#%_sec_1.2.6
 expmod :: (Integral a1, Integral a2) => a2 -> a1 -> a2 -> a2
 expmod b 0 m = 1
@@ -100,9 +106,9 @@ inverse a n = go 0 n 1 a
             newr' = r - quot * newr
             quot = r `div` newr
 
-generate :: (Integral a, Integral b, Random b) => a -> MaybeT IO (b, b, b)
+generate :: (MonadIO m, Random c, Integral c, MonadPlus m, Integral b) => b -> m (c, c, c)
 generate b = do
-  let maxPrime = 2 ^ (b-1)
+  let maxPrime = 2 ^ (b `div` 2)
   p <- randomPrime maxPrime
   q <- randomPrime maxPrime
   let n = p * q

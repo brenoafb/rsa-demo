@@ -25,6 +25,11 @@ dependencies:
 - monad-loops
 - mtl
 - transformers
+- bytestring
+- base64-bytestring
+- RSA
+- binary
+- DRBG
 
 library:
   source-dirs: src

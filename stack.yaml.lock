@@ -3,7 +3,21 @@
 # For more information, please see the documentation at:
 #   https://docs.haskellstack.org/en/stable/lock_files
 
-packages: []
+packages:
+- completed:
+    hackage: DRBG-0.5.5@sha256:3b8040bed356e2b63927a27fb6d5adbd19d70c9e1d1bb66111bbeb33e56900eb,2259
+    pantry-tree:
+      size: 896
+      sha256: 586ee2257b255cb7f2a3663711199f9de9e70445ce7cb192f5af07dd66eadac2
+  original:
+    hackage: DRBG-0.5.5@sha256:3b8040bed356e2b63927a27fb6d5adbd19d70c9e1d1bb66111bbeb33e56900eb,2259
+- completed:
+    hackage: cipher-aes128-0.7.0.5@sha256:95c6327b0c93839f56e74cace17d9b85292214975bac9e8b7c13ebb725ba3856,3777
+    pantry-tree:
+      size: 1232
+      sha256: af923f62ac037ef55c67ab8d1d98a3c1d020623ca9c97143e553f7a90f75e888
+  original:
+    hackage: cipher-aes128-0.7.0.5@sha256:95c6327b0c93839f56e74cace17d9b85292214975bac9e8b7c13ebb725ba3856,3777
 snapshots:
 - completed:
     size: 532413
