@@ -63,39 +63,53 @@ writePublicKey :: FilePath -> RSA.PublicKey -> IO ()
 writePublicKey filename pk =
   B.writeFile filename bstr
     where bstr =  unlines ["-----BEGIN PUBLIC KEY-----", key, "-----END PUBLIC KEY-----"]
-          key = B64.encode $ Bin.encode pk
+          key = breakLines width . B64.encode $ Bin.encode pk
+          width = 64
 
 writePrivateKey :: FilePath -> RSA.PrivateKey -> IO ()
 writePrivateKey filename sk =
   B.writeFile filename bstr
     where bstr =  unlines ["-----BEGIN PRIVATE KEY-----", key, "-----END PRIVATE KEY-----"]
-          key = B64.encode $ Bin.encode sk
+          key = breakLines width . B64.encode $ Bin.encode sk
+          width = 64
 
 readPublicKey :: FilePath -> IO (Either String RSA.PublicKey)
 readPublicKey filename = do
   contents <- B.readFile filename
   case lines contents of
-    ["-----BEGIN PUBLIC KEY-----", key, "-----END PUBLIC KEY-----"] ->
-      case B64.decode key of
-        Left err -> return $ Left err
-        Right key' -> return . Right $ Bin.decode key'
-    _ -> return $ Left "Error reading key file"
+    "-----BEGIN PUBLIC KEY-----":xs
+      | last xs == "-----END PUBLIC KEY-----"->
+        let keyLines = takeWhile (/= "-----END PUBLIC KEY-----") xs
+            key = B.concat keyLines
+         in case B64.decode key of
+              Left err -> return $ Left err
+              Right key' -> return . Right $ Bin.decode key'
+
 
 readPrivateKey :: FilePath -> IO (Either String RSA.PrivateKey)
 readPrivateKey filename = do
   contents <- B.readFile filename
   case lines contents of
-    ["-----BEGIN PRIVATE KEY-----", key, "-----END PRIVATE KEY-----"] ->
-      case B64.decode key of
-        Left err -> return $ Left err
-        Right key' -> return . Right $ Bin.decode key'
-    _ -> return $ Left "Error reading key file"
+    "-----BEGIN PRIVATE KEY-----":xs
+      | last xs == "-----END PRIVATE KEY-----"->
+        let keyLines = takeWhile (/= "-----END PRIVATE KEY-----") xs
+            key = B.concat keyLines
+         in case B64.decode key of
+              Left err -> return $ Left err
+              Right key' -> return . Right $ Bin.decode key'
 
 lines :: B.ByteString -> [B.ByteString]
 lines = B.split '\n'
 
 unlines :: [B.ByteString] -> B.ByteString
 unlines = B.intercalate "\n"
+
+-- breakLines :: Int -> B.ByteString -> B.ByteString
+breakLines 0 s = s
+breakLines n s
+  | B.length s <= n = s
+  | otherwise = B.take n s <> "\n" <> breakLines n (B.drop n s)
+
 
 usage = unlines
   ["RSA signature verifier"
