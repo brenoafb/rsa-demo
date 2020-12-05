@@ -14,7 +14,7 @@ import Crypto.Random.DRBG
 import Data.ByteString.Lazy.Internal (unpackBytes)
 
 import qualified Codec.Crypto.RSA.Pure as RSA
-import qualified Data.ByteString.Lazy as B
+import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.ByteString.Base64.Lazy as B64
 import qualified Data.Binary as Bin
 
@@ -28,36 +28,69 @@ parse ["-k", bits] = do
     let b = read bits :: Int
     g <- newGenIO :: IO CtrDRBG
     case RSA.generateKeyPair g b of
-        Left error -> undefined -- TODO handle error
+        Left err -> undefined -- TODO handle error
         Right (publicKey, privateKey, g') -> do
-            Bin.encodeFile privateKeyFile privateKey
-            Bin.encodeFile publicKeyFile publicKey
-parse ["-s"] = do  -- sign message
-    message <- B.getContents
-    privateKeyE <- Bin.decodeFileOrFail privateKeyFile
-    case privateKeyE of
-        Left (offset, err) -> B.putStrLn "Error reading private key file"
-        Right privateKey -> do
-          case RSA.sign privateKey message of -- TODO use sha-3
-              Left error -> undefined -- TODO handle error
-              Right signature -> B.putStr $ B.concat [(B64.encode signature), "\n\n", message]
-               
+            -- Bin.encodeFile privateKeyFile privateKey
+            -- Bin.encodeFile publicKeyFile publicKey
+            writePublicKey publicKeyFile publicKey
+            writePrivateKey privateKeyFile privateKey
 
-parse ["-v"] = do  -- validate message
-    publicKeyE <- Bin.decodeFileOrFail publicKeyFile
+parse ["-s", filename, signatureFile] = do  -- sign message
+    message <- B.readFile filename
+    privateKeyE <- readPrivateKey privateKeyFile
+    case privateKeyE of
+        Left err -> B.putStrLn $ B.pack err
+        Right privateKey ->
+          case RSA.sign privateKey message of
+              Left err -> B.putStrLn . B.pack $ show err
+              Right signature -> Bin.encodeFile signatureFile signature
+
+parse ["-v", filename, signatureFile] = do  -- validate message
+    message <- B.readFile filename
+    signature <- Bin.decodeFile signatureFile
+    publicKeyE <- readPublicKey publicKeyFile
     case publicKeyE of
-        Left (offset, err) -> B.putStrLn "Error reading public key file"
-        Right publicKey -> do
-          input <- B.getContents
-          let signature : "" : message' = lines input
-              message = unlines message'
-          case RSA.verify publicKey message (B64.decodeLenient signature) of
-              Left error -> undefined -- TODO handle error
-              Right True -> B.putStrLn "OK"
-              Right False -> B.putStrLn "FAIL"
+        Left err -> B.putStrLn $ B.pack err
+        Right publicKey ->
+          case RSA.verify publicKey message signature of
+              Left err -> B.putStrLn . B.pack $ show err
+              Right True -> B.putStrLn "Verified OK"
+              Right False -> B.putStrLn "Verification Failure"
+
+writePublicKey :: FilePath -> RSA.PublicKey -> IO ()
+writePublicKey filename pk =
+  B.writeFile filename bstr
+    where bstr =  unlines ["-----BEGIN PUBLIC KEY-----", key, "-----END PUBLIC KEY-----"]
+          key = B64.encode $ Bin.encode pk
+
+writePrivateKey :: FilePath -> RSA.PrivateKey -> IO ()
+writePrivateKey filename sk =
+  B.writeFile filename bstr
+    where bstr =  unlines ["-----BEGIN PRIVATE KEY-----", key, "-----END PRIVATE KEY-----"]
+          key = B64.encode $ Bin.encode sk
+
+readPublicKey :: FilePath -> IO (Either String RSA.PublicKey)
+readPublicKey filename = do
+  contents <- B.readFile filename
+  case lines contents of
+    ["-----BEGIN PUBLIC KEY-----", key, "-----END PUBLIC KEY-----"] ->
+      case B64.decode key of
+        Left err -> return $ Left err
+        Right key' -> return . Right $ Bin.decode key'
+    _ -> return $ Left "Error reading key file"
+
+readPrivateKey :: FilePath -> IO (Either String RSA.PrivateKey)
+readPrivateKey filename = do
+  contents <- B.readFile filename
+  case lines contents of
+    ["-----BEGIN PRIVATE KEY-----", key, "-----END PRIVATE KEY-----"] ->
+      case B64.decode key of
+        Left err -> return $ Left err
+        Right key' -> return . Right $ Bin.decode key'
+    _ -> return $ Left "Error reading key file"
 
 lines :: B.ByteString -> [B.ByteString]
-lines = B.split (head $ unpackBytes "\n")
+lines = B.split '\n'
 
 unlines :: [B.ByteString] -> B.ByteString
 unlines = B.intercalate "\n"
@@ -70,7 +103,7 @@ unlines = B.intercalate "\n"
 --         Just (n, e, d)
 --             | bitLength n < b -> putStrLn ("got bitlength " ++ show (bitLength n)) >> keyGen b
 --             | otherwise -> do
---                 putStrLn ("got bitlength " ++ show (bitLength n)) 
+--                 putStrLn ("got bitlength " ++ show (bitLength n))
 --                 writeFile publicKeyFile (show (n :: Integer) ++ "\n" ++ show e)
 --                 writeFile privateKeyFile (show n ++ "\n" ++ show d)
 
@@ -81,5 +114,5 @@ unlines = B.intercalate "\n"
 --         modulus = read modulusStr :: Integer
 --         key     = read keyStr :: Integer
 --     return (modulus, key)
--- 
+--
 -- encryptBS n k b = undefined
