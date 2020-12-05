@@ -30,8 +30,6 @@ parse ["-k", bits] = do
     case RSA.generateKeyPair g b of
         Left err -> undefined -- TODO handle error
         Right (publicKey, privateKey, g') -> do
-            -- Bin.encodeFile privateKeyFile privateKey
-            -- Bin.encodeFile publicKeyFile publicKey
             writePublicKey publicKeyFile publicKey
             writePrivateKey privateKeyFile privateKey
 
@@ -94,25 +92,3 @@ lines = B.split '\n'
 
 unlines :: [B.ByteString] -> B.ByteString
 unlines = B.intercalate "\n"
-
--- keyGen :: Integer -> IO ()
--- keyGen b = do
---     genM <- runMaybeT $ generate b
---     case genM of
---         Nothing -> putStrLn "Error generating keys"
---         Just (n, e, d)
---             | bitLength n < b -> putStrLn ("got bitlength " ++ show (bitLength n)) >> keyGen b
---             | otherwise -> do
---                 putStrLn ("got bitlength " ++ show (bitLength n))
---                 writeFile publicKeyFile (show (n :: Integer) ++ "\n" ++ show e)
---                 writeFile privateKeyFile (show n ++ "\n" ++ show d)
-
--- readKeys :: FilePath -> IO (Integer, Integer)
--- readKeys path = do
---     contents <- readFile path
---     let [modulusStr, keyStr] = B.lines contents
---         modulus = read modulusStr :: Integer
---         key     = read keyStr :: Integer
---     return (modulus, key)
---
--- encryptBS n k b = undefined
