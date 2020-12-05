@@ -28,7 +28,7 @@ parse ["-k", bits] = do
     let b = read bits :: Int
     g <- newGenIO :: IO CtrDRBG
     case RSA.generateKeyPair g b of
-        Left err -> undefined -- TODO handle error
+        Left err -> B.putStrLn $ B.pack . show $ err
         Right (publicKey, privateKey, g') -> do
             writePublicKey publicKeyFile publicKey
             writePrivateKey privateKeyFile privateKey
@@ -54,6 +54,10 @@ parse ["-v", filename, signatureFile] = do  -- validate message
               Left err -> B.putStrLn . B.pack $ show err
               Right True -> B.putStrLn "Verified OK"
               Right False -> B.putStrLn "Verification Failure"
+
+parse ["-h"] = B.putStr usage
+parse _      = B.putStr usage
+
 
 writePublicKey :: FilePath -> RSA.PublicKey -> IO ()
 writePublicKey filename pk =
@@ -92,3 +96,12 @@ lines = B.split '\n'
 
 unlines :: [B.ByteString] -> B.ByteString
 unlines = B.intercalate "\n"
+
+usage = unlines
+  ["RSA signature verifier"
+  , "Options"
+  , "  -h: show this dialog"
+  , "  -k <bit length>: generate public and private keys"
+  , "  -s <input file> <signature file>: generate signature"
+  , "  -v <input file> <signature file>: verify file with given signature file"
+  ]
