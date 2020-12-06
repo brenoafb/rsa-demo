@@ -24,6 +24,8 @@ main = getArgs >>= parse
 privateKeyFile = "private.key"
 publicKeyFile  = "public.key"
 
+parse :: [String] -> IO ()
+
 parse ["-k", bits] = do
   let b = read bits :: Int
   g <- newGenIO :: IO CtrDRBG

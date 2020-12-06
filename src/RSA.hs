@@ -8,12 +8,6 @@ import Control.Monad.Trans
 import Control.Monad.Trans.Maybe
 import Data.Maybe (fromJust)
 
-data RSAKeys = RSAKeys
-  { modulus :: Integer
-  , publicKey :: Integer
-  , privateKey :: Integer
-  }
-
 -- https://mitpress.mit.edu/sites/default/files/sicp/full-text/book/book-Z-H-11.html#%_sec_1.2.6
 expmod :: (Integral a1, Integral a2) => a2 -> a1 -> a2 -> a2
 expmod b 0 m = 1
